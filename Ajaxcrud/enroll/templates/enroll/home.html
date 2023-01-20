@@ -1,0 +1,210 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href=" {% static 'enroll/css/bootstrap.css' %}" />
+    <link rel="stylesheet" href="/static/enroll/css/bootstrap.css" />
+  </head>
+
+  <body>
+    <div class="container p-3">
+      <p class="alert alert-info h4 text-center text-bg-warning">
+        URUD with AJAX
+      </p>
+      <div class="row">
+        <div class="col-sm-4">
+          <h4 class="text-center alert alert-info">Add/Update User</h4>
+          <form action="" method="post">
+            {% csrf_token %} {{ form.as_p}}
+            <input type="hidden" id="userid">
+            <input
+              type="button"
+              value="Save"
+              class="btn btn-success"
+              id="btnsave"
+            />
+          </form>
+          <div>
+            <div class="text-center mt-3">
+              <div class="alert alert-info" style="display: none;" id="msg"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-7">
+          <h4 class="text-center alert alert-info">Show User Information</h4>
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Password</th>
+                <th scope="col" class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              {% for data in users %}
+              <tr>
+                <td>{{data.id}}</td>
+                <td>{{data.name}}</td>
+                <td>{{data.email}}</td>
+                <td>{{data.password}}</td>
+                <td>
+                  <input
+                    type="button"
+                    value="Edit"
+                    data-sid="{{data.id}}"
+                    class="btn btn-warning"
+                    id="btnupdate"
+                  />
+                  <input
+                    type="button"
+                    value="Delete"
+                    data-sid="{{data.id}}"
+                    class="btn btn-danger"
+                    id="btndelete"
+                  />
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src=" {% static 'enroll/js/jquesy-3.6.3.js' %}"></script>
+    <script src=" {% static 'enroll/js/bootstrap.js' %}"></script>
+    <script src=" {% static 'enroll/js/jpopper.min.js' %}"></script>
+    <script src="/static/enroll/js/bootstrap.js"></script>
+    <script src="/static/enroll/js/jquery-3.6.3.js"></script>
+    <script src="/static/enroll/js/popper.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <script>
+      //
+      // insert user data and show in  table
+
+      $("#btnsave").click(function () {
+        console.log("btn click");
+        let usrid = $('#userid').val()
+        let nm = $("#txtname").val();
+        let em = $("#txtemail").val();
+        let pwd = $("#txtpassword").val();
+        let csr = $("input[name=csrfmiddlewaretoken]").val();
+        let output = "";
+        if (nm == "") {
+          console.log("Enter Name");
+          $("#msg").text("Enter Name");
+          $('#msg').show();
+        } else if (em == "") {
+          $("#msg").text("Enter Email");
+          $('#msg').show();
+          console.log("Enter Email");
+        } else if (pwd == "") {
+          $("#msg").text("Enter Password");
+          $('#msg').show();
+          console.log("Enter password");
+        } else {
+          mydata = {
+            id : usrid, 
+            name: nm,
+            email: em,
+            password: pwd,
+            csrfmiddlewaretoken: csr,
+          };
+          $.ajax({
+            url: "{% url 'save' %}",
+            method: "POST",
+            data: mydata,
+            success: function (data) {
+              x = data.userlist;
+              $("#msg").text("Form Submit Successfully");
+              $('#msg').show();
+              if (data.status == "Save") {
+                // alert(data.status);
+                for (let i = 0; i < x.length; i++) {
+                  output +=
+                    "<tr><td>" +
+                    x[i].id +
+                    "</td><td>" +
+                    x[i].name +
+                    "</td><td>" +
+                    x[i].email +
+                    "</td><td>" +
+                    x[i].password +
+                    "</td><td>  <input type='button' value='Edit' data-sid=" +
+                    x[i].id +
+                    " class='btn btn-warning' id = 'btnupdate' /> <input type='button' value='Delete' data-sid=" +
+                    x[i].id +
+                    " class='btn btn-danger' id='btndelete' /></td></tr>";
+                }
+                $("form")[0].reset();
+                $("#tbody").html(output);
+              }
+              if (data.status == "fail") {
+                alert(data.status);
+                $("#msg").text("Form Submition Fail");
+                $('#msg').show();
+              }
+            },
+          });
+        }
+      });
+
+      // delete user
+      $("#tbody").on("click", "#btndelete", function () {
+        console.log("delete cilcked");
+        let id = $(this).attr("data-sid");
+        console.log(id);
+        mythis = this;
+        let csr = $("input[name=csrfmiddlewaretoken]").val();
+        mydata = { sid: id, csrfmiddlewaretoken: csr };
+        $.ajax({
+          url: "{% url 'delete' %}",
+          method: "POST",
+          data: mydata,
+          success: function (data) {
+            console.log(data);
+              $("#msg").text("User Deleted");
+              $('#msg').show();
+            if (data.status == "1") {
+              console.log("data Deleted Successfully");
+              $(mythis).closest("tr").fadeOut();
+            }
+          },
+        });
+        $("form")[0].reset();
+      });
+
+      // updating users
+      $("#tbody").on("click", "#btnupdate", function () {
+        console.log("update cilcked");
+        let id = $(this).attr("data-sid");
+        console.log(id);
+        mythis = this;
+        let csr = $("input[name=csrfmiddlewaretoken]").val();
+        mydata = { sid: id, csrfmiddlewaretoken: csr };
+        $.ajax({
+          url: "{% url 'edit' %}",
+          method: "POST",
+          data: mydata,
+          success: function (data) {
+            console.log(data);
+            $("form")[0].reset();
+            $('#userid').val(id)
+            $("#txtname").val(data.name)
+            $("#txtemail").val(data.email)
+            $("#txtpassword").val(data.password)
+          },
+        });
+       
+      });
+    </script>
+  </body>
+</html>
